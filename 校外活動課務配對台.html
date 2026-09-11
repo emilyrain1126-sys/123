@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123a57">
+  <meta name="description" content="依校外活動遺留課務與留校教師空堂，自動進行公平入班配對。">
+  <title>校外活動課務配對台</title>
+  <style>
+:root {
+  color-scheme: light;
+  --ink: #152432;
+  --muted: #607181;
+  --navy: #163f5a;
+  --navy-2: #0b2b3e;
+  --teal: #087f74;
+  --teal-soft: #e8f7f4;
+  --amber: #b36a07;
+  --amber-soft: #fff3d8;
+  --red: #b44036;
+  --paper: #ffffff;
+  --canvas: #f3f6f8;
+  --line: #dce5ea;
+  --shadow: 0 8px 24px rgba(20, 50, 70, .065);
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--canvas); color: var(--ink); min-height: 100vh; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.topbar {
+  background: linear-gradient(115deg, var(--navy-2), #174c68);
+  color: white; min-height: 104px; padding: 20px max(24px, calc((100vw - 1320px) / 2));
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  border-bottom: 5px solid #20a195;
+}
+.brand-lockup { display: flex; align-items: center; gap: 13px; }
+.brand-mark { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: #1eaa9b; color: white; font-weight: 900; font-size: 1.22rem; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+.eyebrow { margin: 0 0 4px; font-size: .78rem; letter-spacing: .14em; font-weight: 800; text-transform: uppercase; opacity: .76; }
+h1 { margin: 0; font-size: clamp(1.55rem, 2.5vw, 2.15rem); letter-spacing: .02em; }
+.save-state { font-size: .86rem; padding: 8px 12px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: #dbeaf3; }
+
+main { max-width: 1320px; margin: 0 auto; padding: 20px 24px 52px; }
+.workflow-strip { display: grid; grid-template-columns: repeat(3, 1fr); background: #e7edf1; border-radius: 10px; padding: 4px; margin-bottom: 14px; }
+.workflow-strip span { display: flex; justify-content: center; align-items: center; gap: 8px; min-height: 38px; color: #627483; font-size: .88rem; font-weight: 800; border-radius: 7px; }
+.workflow-strip span.active { background: white; color: var(--navy); box-shadow: 0 2px 8px rgba(20,50,70,.08); }
+.workflow-strip span.done { color: var(--teal); }
+.workflow-strip b { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #cad6dd; font-size: .75rem; }
+.workflow-strip .active b { background: var(--teal); color: white; }
+.workflow-strip .done b { background: #bde6df; color: #08685f; }
+.event-strip { display: flex; gap: 16px; align-items: end; margin-bottom: 14px; padding: 14px 16px; box-shadow: none; }
+.field { display: grid; gap: 7px; min-width: 170px; }
+.field.grow { flex: 1; }
+.field label, .field > span { font-size: .88rem; font-weight: 800; color: #405364; }
+input, textarea { width: 100%; border: 1px solid #cbd7df; background: #fff; color: var(--ink); border-radius: 8px; padding: 11px 12px; outline: none; transition: border-color .15s, box-shadow .15s; }
+input:focus, textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(11,129,120,.13); }
+select { width: 100%; border: 1px solid #cbd7df; background: #fff; color: var(--ink); border-radius: 8px; padding: 10px 34px 10px 11px; outline: none; }
+select:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(11,129,120,.13); }
+
+.workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.input-panel { padding: 20px; }
+.upload-panel { padding: 18px; margin-bottom: 16px; }
+.drop-zone { min-height: 145px; border: 2px dashed #a8bbc8; border-radius: 12px; background: #f8fafb; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; padding: 22px; transition: border-color .15s, background .15s, transform .15s; }
+.drop-zone:hover, .drop-zone.dragging { border-color: var(--teal); background: var(--teal-soft); }
+.drop-zone input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.drop-zone strong { color: var(--navy); font-size: 1.03rem; }
+.drop-zone small { color: var(--muted); }
+.upload-icon { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 14px; background: linear-gradient(145deg,var(--navy),#23647f); color: white; font-size: .7rem; font-weight: 900; letter-spacing: .06em; }
+.file-meta { margin-top: 12px; padding: 11px 13px; border-radius: 8px; background: var(--teal-soft); color: #075f59; font-weight: 700; font-size: .88rem; }
+.mapping-workspace { margin-bottom: 18px; }
+.mapping-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 11px; margin-top: 13px; }
+.preview-box { margin-top: 14px; border: 1px solid var(--line); background: #f7f9fa; border-radius: 8px; padding: 11px 12px; min-height: 48px; color: var(--muted); font-size: .79rem; line-height: 1.55; overflow: hidden; }
+.preview-box strong { color: var(--ink); }
+.step-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 15px; }
+.step-heading.compact { margin-bottom: 0; }
+.step-number { flex: 0 0 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--navy); color: white; font-weight: 900; font-size: .82rem; }
+h2, h3, p { margin-top: 0; }
+.step-heading h2 { margin: 0 0 3px; font-size: 1.08rem; }
+.step-heading p { margin: 0; color: var(--muted); font-size: .88rem; }
+.input-footer { margin-top: 10px; display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .8rem; }
+.input-footer span:first-child { color: var(--navy); font-weight: 800; }
+
+.rules { margin-top: 18px; padding: 18px 20px; display: grid; grid-template-columns: minmax(260px, .8fr) minmax(500px, 1.2fr); gap: 24px; align-items: center; }
+.rule-controls { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 14px; }
+.fixed-rules { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.fixed-rules span { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 7px 9px; border-radius: 7px; background: #f1f6f8; color: #344c5d; font-size: .8rem; font-weight: 700; }
+.fixed-rules b { flex: 0 0 21px; height: 21px; display: grid; place-items: center; border-radius: 6px; background: var(--navy); color: #fff; font-size: .72rem; }
+.command-box { grid-column: 1 / -1; padding: 13px; border-radius: 10px; background: #eef5f7; border: 1px solid #d5e4e9; }
+.command-box > label { display: block; margin-bottom: 7px; color: var(--navy); font-size: .88rem; font-weight: 900; }
+.command-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+.command-row input { background: white; }
+.command-button { color: white; background: var(--navy); }
+.command-button:hover { background: var(--navy-2); }
+.command-box small { display: block; margin-top: 7px; color: var(--muted); font-size: .76rem; }
+.command-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.command-chips span { padding: 5px 8px; border-radius: 999px; background: white; border: 1px solid #c7d9df; color: #315164; font-size: .74rem; font-weight: 800; }
+.command-chips .empty-command { color: #788a96; font-weight: 600; }
+.command-chips .invalid-command { background: #fff4e0; border-color: #ebcf96; color: #8a5809; }
+.check-card { border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; display: flex; gap: 9px; align-items: center; min-width: 190px; }
+.check-card input { width: 18px; height: 18px; accent-color: var(--teal); }
+.check-card span { display: grid; }
+.check-card strong { font-size: .9rem; }
+.check-card small { color: var(--muted); font-size: .72rem; margin-top: 2px; }
+.exclusion { flex: 1; min-width: 210px; }
+
+.button { border: 0; border-radius: 9px; padding: 11px 16px; font-weight: 800; white-space: nowrap; min-height: 43px; transition: transform .12s, background .12s, opacity .12s; }
+.button:hover:not(:disabled) { transform: translateY(-1px); }
+.button:disabled { opacity: .42; cursor: not-allowed; }
+.button.primary { background: var(--teal); color: white; box-shadow: 0 5px 14px rgba(11,129,120,.22); }
+.button.primary:hover { background: #086f68; }
+.button.ghost { background: #fff; color: var(--navy); border: 1px solid #cbd8e0; }
+
+.results { margin-top: 26px; }
+.results-header { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 13px; }
+.results-header h2 { margin: 0; font-size: 1.35rem; }
+.result-actions { display: flex; gap: 8px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+.stat { border-left: 4px solid var(--navy); background: #fff; padding: 13px 16px; border-radius: 8px; box-shadow: 0 4px 14px rgba(20,50,70,.05); display: flex; justify-content: space-between; align-items: center; }
+.stat span { color: var(--muted); font-size: .88rem; }
+.stat strong { font-size: 1.5rem; color: var(--navy); }
+.stat.success { border-color: var(--teal); }
+.stat.success strong { color: var(--teal); }
+.stat.warning { border-color: var(--amber); }
+.stat.warning strong { color: var(--amber); }
+.notice { border: 1px dashed #b7c6d0; border-radius: 12px; padding: 34px 20px; text-align: center; color: var(--muted); background: rgba(255,255,255,.55); }
+.notice.error { border-color: #e2a5a0; background: #fff1ef; color: #8f332c; }
+.result-grid { display: grid; grid-template-columns: minmax(0, 1fr) 265px; gap: 14px; align-items: start; }
+.table-panel { overflow: hidden; }
+.table-title { padding: 16px 18px 12px; display: flex; justify-content: space-between; align-items: center; }
+.table-title h3, .load-panel h3 { margin: 0; font-size: 1rem; }
+.table-title span { color: var(--muted); font-size: .82rem; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th { text-align: left; color: #526778; background: #f4f7f9; padding: 10px 12px; white-space: nowrap; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+td { padding: 12px; border-bottom: 1px solid #e8eef1; white-space: nowrap; }
+tbody > tr:not(.detail-row):hover { background: #f8fbfc; }
+tr.unmatched { background: #fff8e9; }
+.cell-sub { color: var(--muted); font-size: .76rem; }
+.teacher-select { min-width: 120px; padding: 7px 28px 7px 8px; border-radius: 6px; border: 1px solid #cbd7df; background: white; }
+.badge { display: inline-block; border-radius: 999px; padding: 4px 8px; font-size: .72rem; font-weight: 800; background: var(--teal-soft); color: #086a62; }
+.badge.warning { background: var(--amber-soft); color: #8c5405; }
+.detail-toggle { border: 1px solid #cbd8e0; background: white; color: var(--navy); border-radius: 7px; padding: 6px 9px; font-weight: 800; font-size: .76rem; }
+.detail-toggle:hover { background: #f1f6f8; }
+.detail-row[hidden] { display: none; }
+.detail-row td { padding: 0; background: #f7fafb; white-space: normal; }
+.match-detail { padding: 16px 18px 18px; border-left: 4px solid var(--teal); }
+.decision-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 13px; }
+.decision-line span { padding: 6px 9px; border-radius: 999px; background: white; border: 1px solid var(--line); color: #486071; font-size: .76rem; font-weight: 800; }
+.decision-line i { color: #93a5b0; font-style: normal; }
+.decision-note { margin: 0 0 12px; color: #344c5d; font-size: .86rem; }
+.decision-note strong { color: var(--navy); }
+.candidate-table { width: 100%; background: white; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.candidate-table th, .candidate-table td { padding: 8px 10px; font-size: .78rem; }
+.candidate-table td { white-space: normal; }
+.candidate-table tr.selected { background: var(--teal-soft); }
+.candidate-status { font-weight: 800; color: #607181; }
+.candidate-status.chosen { color: var(--teal); }
+.ratio { font-variant-numeric: tabular-nums; }
+.load-panel { padding: 17px; }
+.load-panel > p { color: var(--muted); font-size: .8rem; margin: 5px 0 15px; }
+.load-list { display: grid; gap: 13px; }
+.load-item { display: grid; gap: 6px; }
+.load-line { display: flex; justify-content: space-between; font-size: .84rem; }
+.load-line strong { color: var(--navy); }
+.bar { height: 7px; border-radius: 999px; background: #e5ecef; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--teal); border-radius: inherit; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: #142d3e; color: white; border-radius: 8px; padding: 10px 16px; opacity: 0; pointer-events: none; transition: .2s; box-shadow: var(--shadow); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 1000px) {
+  .workspace, .rules, .result-grid { grid-template-columns: 1fr; }
+  .rules { gap: 16px; }
+}
+@media (max-width: 720px) {
+  .topbar { align-items: flex-start; padding: 22px 18px; }
+  .save-state { display: none; }
+  main { padding: 16px 14px 36px; }
+  .event-strip, .rule-controls, .results-header { align-items: stretch; flex-direction: column; }
+  .workflow-strip span { font-size: .78rem; }
+  .workflow-strip span { gap: 4px; }
+  .workflow-strip b { display: none; }
+  .field { min-width: 0; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .result-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .result-actions .button { padding-inline: 9px; }
+  .input-footer { flex-direction: column; gap: 4px; }
+  .mapping-grid { grid-template-columns: 1fr; }
+  .fixed-rules { grid-template-columns: 1fr; }
+  .rule-controls { grid-template-columns: 1fr; }
+  .command-row { grid-template-columns: 1fr; }
+}
+
+@media print {
+  body { background: white; }
+  .topbar { background: white; color: black; border-bottom: 2px solid #222; min-height: auto; padding: 0 0 12px; }
+  .save-state, .event-strip, .upload-panel, .workspace, .rules, .result-actions, .notice, .load-panel { display: none !important; }
+  main { max-width: none; padding: 16px 0; }
+  .results { margin: 0; }
+  .stats { box-shadow: none; }
+  .result-grid { display: block !important; }
+  .table-panel { box-shadow: none; border: 0; }
+  table { font-size: 11pt; }
+  th, td { padding: 7px 8px; }
+  .teacher-select { border: 0; appearance: none; padding: 0; }
+  .detail-toggle, .detail-row { display: none !important; }
+}
+
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-lockup">
+      <span class="brand-mark" aria-hidden="true">課</span>
+      <div>
+        <p class="eyebrow">教務處｜課務安排</p>
+        <h1>校外活動課務配對台</h1>
+      </div>
+    </div>
+    <div class="save-state">本機解析・不留存檔案</div>
+  </header>
+
+  <main>
+    <nav class="workflow-strip" aria-label="操作步驟">
+      <span class="active"><b>1</b> 上傳 Excel</span>
+      <span><b>2</b> 確認資料</span>
+      <span><b>3</b> 產生安排</span>
+    </nav>
+
+    <section class="event-strip panel" aria-labelledby="event-title">
+      <div class="field grow">
+        <label for="eventName" id="event-title">活動名稱</label>
+        <input id="eventName" value="九年級校外教學" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="eventStart">開始日期</label>
+        <input type="date" id="eventStart">
+      </div>
+      <div class="field">
+        <label for="eventEnd">結束日期</label>
+        <input type="date" id="eventEnd">
+      </div>
+    </section>
+
+    <section class="panel upload-panel">
+      <div class="step-heading">
+        <span class="step-number">1</span>
+        <div>
+          <h2>上傳課務 Excel</h2>
+          <p>網站會讀取各工作表，自動找出「教師遺留課務」與「因活動空出的教師課務」。</p>
+        </div>
+      </div>
+      <label class="drop-zone" id="dropZone" for="excelFile">
+        <input type="file" id="excelFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        <span class="upload-icon">XLSX</span>
+        <strong>選擇 Excel，或拖曳檔案到這裡</strong>
+        <small>支援 .xlsx；檔案只在此瀏覽器中解析，不會上傳到伺服器。</small>
+      </label>
+      <div class="file-meta" id="fileMeta" hidden></div>
+    </section>
+
+    <section class="workspace mapping-workspace" id="mappingWorkspace" hidden>
+      <article class="panel input-panel">
+        <div class="step-heading">
+          <span class="step-number">2A</span>
+          <div>
+            <h2>教師遺留課務</h2>
+            <p id="needsCount">等待讀取 Excel</p>
+          </div>
+        </div>
+        <label class="field"><span>工作表</span><select id="needsSheet"></select></label>
+        <div class="mapping-grid">
+          <label class="field"><span>日期</span><select id="needDate"></select></label>
+          <label class="field"><span>節次</span><select id="needPeriod"></select></label>
+          <label class="field"><span>班級</span><select id="needClass"></select></label>
+          <label class="field"><span>科目</span><select id="needSubject"></select></label>
+          <label class="field"><span>原授課教師</span><select id="needTeacher"></select></label>
+        </div>
+        <div class="preview-box" id="needsPreview"></div>
+      </article>
+
+      <article class="panel input-panel">
+        <div class="step-heading">
+          <span class="step-number">2B</span>
+          <div>
+            <h2>可入班教師空堂</h2>
+            <p id="availabilityCount">等待讀取 Excel</p>
+          </div>
+        </div>
+        <label class="field"><span>工作表</span><select id="availabilitySheet"></select></label>
+        <div class="mapping-grid">
+          <label class="field"><span>日期</span><select id="availableDate"></select></label>
+          <label class="field"><span>節次</span><select id="availablePeriod"></select></label>
+          <label class="field"><span>教師</span><select id="availableTeacher"></select></label>
+          <label class="field"><span>科別</span><select id="availableSubject"></select></label>
+        </div>
+        <div class="preview-box" id="availabilityPreview"></div>
+      </article>
+    </section>
+
+    <section class="rules panel" aria-labelledby="rules-title">
+      <div class="step-heading compact">
+          <span class="step-number">3</span>
+        <div>
+          <h2 id="rules-title">設定配對原則</h2>
+          <p>先比對同日期、同節次，再依下列固定規則配對。</p>
+        </div>
+      </div>
+      <div class="rule-controls">
+        <div class="fixed-rules" aria-label="固定分配規則">
+          <span><b>1</b> 同科教師優先</span>
+          <span><b>2</b> 僅使用因校外活動而無課務的教師</span>
+          <span><b>3</b> 依無課務堂數按比例公平分配</span>
+          <span><b>4</b> 體育課限定由體育教師入班</span>
+        </div>
+        <div class="command-box">
+          <label for="quickCommand">即時指令</label>
+          <div class="command-row">
+            <input id="quickCommand" autocomplete="off" placeholder="例如：排除王老師；李老師最多1堂；優先陳老師">
+            <button class="button command-button" id="applyCommand" type="button">套用並重排</button>
+          </div>
+          <small>多項指令請用分號隔開。也支援「每位教師最多2堂」、「827第2節指定陳老師」。</small>
+          <div class="command-chips" id="commandChips" aria-live="polite"><span class="empty-command">尚未加入指令</span></div>
+        </div>
+        <label class="field exclusion">
+          <span>排除入班教師</span>
+          <input id="excludedTeachers" placeholder="以逗號分隔，例如：主任、組長">
+        </label>
+        <button class="button primary" id="runMatch" type="button" disabled>自動安排入班</button>
+      </div>
+    </section>
+
+    <section class="results" id="resultsSection" aria-labelledby="results-title">
+      <div class="results-header">
+        <div>
+          <p class="eyebrow">安排結果</p>
+          <h2 id="results-title">尚未執行配對</h2>
+        </div>
+        <div class="result-actions">
+          <button class="button ghost" id="copyResults" type="button" disabled>複製結果</button>
+          <button class="button ghost" id="exportCsv" type="button" disabled>匯出 CSV</button>
+          <button class="button ghost" id="printResults" type="button" disabled>列印</button>
+        </div>
+      </div>
+
+      <div class="stats" id="stats" hidden>
+        <div class="stat"><span>待安排</span><strong id="statNeeds">0</strong></div>
+        <div class="stat success"><span>已完成</span><strong id="statMatched">0</strong></div>
+        <div class="stat warning"><span>未配對</span><strong id="statUnmatched">0</strong></div>
+        <div class="stat"><span>入班教師</span><strong id="statTeachers">0</strong></div>
+      </div>
+
+      <div class="notice" id="emptyResult">
+        填入兩份資料後按「自動安排入班」，這裡會顯示配對結果與教師負擔。
+      </div>
+
+      <div class="result-grid" id="resultGrid" hidden>
+        <article class="panel table-panel">
+          <div class="table-title">
+            <h3>入班安排表</h3>
+            <span id="matchSummary"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>日期／節次</th><th>班級</th><th>科目</th><th>原授課</th><th>入班教師</th><th>狀態</th><th></th></tr></thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <aside class="panel load-panel">
+          <h3>教師負擔</h3>
+          <p>以「已入班／可用空堂」檢查分配比例。</p>
+          <div id="teacherLoads" class="load-list"></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script>
+const $ = (id) => document.getElementById(id);
+const state = { workbook: null, mappings: {}, needs: [], availability: [], assignments: [], openDetails: new Set(), instructions: null };
+const synonyms = {
+  date: ["日期", "時間", "年月日", "月日", "date"], period: ["節次", "節數", "課次", "堂次", "節"],
+  className: ["班級", "班別", "上課班級"], subject: ["科目", "領域", "課程", "任教科目", "科別"],
+  original: ["原授課教師", "原任課教師", "授課教師", "任課教師", "原教師", "教師姓名", "教師"],
+  teacher: ["可入班教師", "留校教師", "教師姓名", "姓名", "教師"]
+};
+const clean = (v) => String(v ?? "").replace(/\s+/g, "").toLowerCase();
+const escapeHtml = (v) => String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]);
+const slotKey = (r) => `${r.date}|${r.period}`;
+const subjectKey = (v) => clean(v).replace(/(科|領域|課程)$/g, "");
+const isPhysicalEducation = (v) => clean(v).includes("體育");
+function colName(index) { let s=""; for(let n=index+1;n;n=Math.floor((n-1)/26)) s=String.fromCharCode(65+(n-1)%26)+s; return s; }
+
+async function unzipXlsx(buffer) {
+  const bytes=new Uint8Array(buffer), view=new DataView(buffer); let eocd=-1;
+  for(let i=bytes.length-22;i>=Math.max(0,bytes.length-65557);i--) if(view.getUint32(i,true)===0x06054b50){eocd=i;break;}
+  if(eocd<0) throw new Error("這個檔案不是有效的 .xlsx 檔。");
+  const entries=view.getUint16(eocd+10,true), files=new Map(), decoder=new TextDecoder(); let offset=view.getUint32(eocd+16,true);
+  for(let i=0;i<entries;i++){
+    if(view.getUint32(offset,true)!==0x02014b50) break;
+    const method=view.getUint16(offset+10,true), size=view.getUint32(offset+20,true), nl=view.getUint16(offset+28,true), el=view.getUint16(offset+30,true), cl=view.getUint16(offset+32,true), lo=view.getUint32(offset+42,true);
+    const name=decoder.decode(bytes.slice(offset+46,offset+46+nl));
+    const start=lo+30+view.getUint16(lo+26,true)+view.getUint16(lo+28,true), compressed=bytes.slice(start,start+size);
+    let content;
+    if(method===0) content=compressed;
+    else if(method===8){const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));content=new Uint8Array(await new Response(stream).arrayBuffer());}
+    else throw new Error(`Excel 內含不支援的壓縮格式（${method}）。`);
+    files.set(name.replace(/^\//,""),content); offset+=46+nl+el+cl;
+  }
+  return files;
+}
+function parseXml(bytes,name){if(!bytes)throw new Error(`Excel 缺少必要內容：${name}`);const d=new DOMParser().parseFromString(new TextDecoder().decode(bytes),"application/xml");if(d.querySelector("parsererror"))throw new Error(`無法讀取 Excel：${name}`);return d;}
+function cellColumn(ref){return [...((ref.match(/[A-Z]+/i)||["A"])[0].toUpperCase())].reduce((n,ch)=>n*26+ch.charCodeAt(0)-64,0)-1;}
+
+async function readWorkbook(file){
+  const files=await unzipXlsx(await file.arrayBuffer()), shared=[];
+  if(files.has("xl/sharedStrings.xml")){const d=parseXml(files.get("xl/sharedStrings.xml"),"sharedStrings.xml");[...d.getElementsByTagName("si")].forEach(si=>shared.push([...si.getElementsByTagName("t")].map(t=>t.textContent).join("")));}
+  const wb=parseXml(files.get("xl/workbook.xml"),"workbook.xml"), rels=parseXml(files.get("xl/_rels/workbook.xml.rels"),"workbook.xml.rels");
+  const targets=new Map([...rels.getElementsByTagName("Relationship")].map(r=>[r.getAttribute("Id"),r.getAttribute("Target")])), sheets=[];
+  for(const sheet of [...wb.getElementsByTagName("sheet")]){
+    const name=sheet.getAttribute("name")||"未命名工作表", rid=sheet.getAttribute("r:id")||sheet.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");
+    let target=(targets.get(rid)||"").replace(/^\//,"").replace(/^xl\//,""); const path=`xl/${target}`.replace(/\/\.\//g,"/");
+    const doc=parseXml(files.get(path),path), rows=[...doc.getElementsByTagName("row")].map(row=>{
+      const values=[]; for(const cell of [...row.getElementsByTagName("c")]){const idx=cellColumn(cell.getAttribute("r")||"A1"),type=cell.getAttribute("t");let value="";
+        if(type==="inlineStr")value=[...cell.getElementsByTagName("t")].map(t=>t.textContent).join("");else{const raw=cell.getElementsByTagName("v")[0]?.textContent??"";value=type==="s"?(shared[Number(raw)]??raw):raw;} values[idx]=value;}
+      return values.map(v=>v??"");}); sheets.push({name,rows});
+  }
+  if(!sheets.length)throw new Error("Excel 中找不到可讀取的工作表。"); return {sheets};
+}
+
+function analyzeSheet(sheet,kind){
+  const fields=kind==="need"?["date","period","className","subject","original"]:["date","period","teacher","subject"];let headerIndex=0,best=-1;
+  sheet.rows.slice(0,15).forEach((row,index)=>{const score=fields.reduce((n,f)=>n+(row.some(c=>synonyms[f].some(s=>clean(c).includes(clean(s))))?1:0),0);if(score>best){best=score;headerIndex=index;}});
+  const headers=sheet.rows[headerIndex]||[], columns={}; fields.forEach(f=>{let idx=headers.findIndex(c=>synonyms[f].some(s=>clean(c).includes(clean(s))));if(idx<0&&f==="teacher")idx=headers.findIndex(c=>synonyms.original.some(s=>clean(c).includes(clean(s))));columns[f]=idx;});
+  return {headerIndex,headers,columns,score:best};
+}
+function pickSheet(kind){const hints=kind==="need"?["遺留","需代","帶隊教師","代課需求"]:["空出","空堂","無課務","可入班","留校"];return state.workbook.sheets.map((s,i)=>({i,score:analyzeSheet(s,kind).score+hints.reduce((n,h)=>n+(clean(s.name).includes(clean(h))?4:0),0)})).sort((a,b)=>b.score-a.score)[0].i;}
+function fillSheetSelect(id,selected){$(id).innerHTML=state.workbook.sheets.map((s,i)=>`<option value="${i}" ${i===selected?"selected":""}>${escapeHtml(s.name)}</option>`).join("");}
+function fillColumnSelect(id,headers,selected){$(id).innerHTML=`<option value="-1">— 未辨識 —</option>`+Array.from({length:Math.max(headers.length,1)},(_,i)=>`<option value="${i}" ${i===selected?"selected":""}>${colName(i)}｜${escapeHtml(headers[i]||"（無標題）")}</option>`).join("");}
+function configureMapping(kind){
+  const prefix=kind==="need"?"needs":"availability", sheet=state.workbook.sheets[+$(prefix+"Sheet").value], a=analyzeSheet(sheet,kind);state.mappings[kind]=a;
+  const ids=kind==="need"?{date:"needDate",period:"needPeriod",className:"needClass",subject:"needSubject",original:"needTeacher"}:{date:"availableDate",period:"availablePeriod",teacher:"availableTeacher",subject:"availableSubject"};
+  Object.entries(ids).forEach(([f,id])=>fillColumnSelect(id,a.headers,a.columns[f]));refreshExtractedData();
+}
+function excelDate(value){const t=String(value??"").trim();if(!t)return"";if(/^\d{5}(\.\d+)?$/.test(t)){const d=new Date(Date.UTC(1899,11,30)+Number(t)*86400000);return`${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,"0")}/${String(d.getUTCDate()).padStart(2,"0")}`;}const m=t.replace(/[.-]/g,"/").match(/(\d{2,4})\/(\d{1,2})\/(\d{1,2})/);return m?`${m[1]}/${String(m[2]).padStart(2,"0")}/${String(m[3]).padStart(2,"0")}`:t;}
+function periodText(v){const t=String(v??"").trim();return /^\d+$/.test(t)?`第${t}節`:t;}
+function selectedColumns(kind){return kind==="need"?{date:+$("needDate").value,period:+$("needPeriod").value,className:+$("needClass").value,subject:+$("needSubject").value,original:+$("needTeacher").value}:{date:+$("availableDate").value,period:+$("availablePeriod").value,teacher:+$("availableTeacher").value,subject:+$("availableSubject").value};}
+function extract(kind){
+  const sheet=state.workbook.sheets[+(kind==="need"?$("needsSheet").value:$("availabilitySheet").value)], a=state.mappings[kind], c=selectedColumns(kind);if(Object.values(c).some(n=>n<0))return[];
+  let lastDate="",lastPeriod="";return sheet.rows.slice(a.headerIndex+1).map((row,i)=>{const date=excelDate(row[c.date])||lastDate,period=periodText(row[c.period])||lastPeriod;lastDate=date||lastDate;lastPeriod=period||lastPeriod;
+    return kind==="need"?{id:`n-${i}`,date,period,className:String(row[c.className]??"").trim(),subject:String(row[c.subject]??"").trim(),original:String(row[c.original]??"").trim()}:{id:`a-${i}`,date,period,teacher:String(row[c.teacher]??"").trim(),subject:String(row[c.subject]??"").trim()};
+  }).filter(r=>kind==="need"?r.date&&r.period&&r.className:r.date&&r.period&&r.teacher);
+}
+function previewRows(rows,kind){if(!rows.length)return"尚未讀到完整資料，請檢查上方欄位對應。";const sample=rows.slice(0,2).map(r=>kind==="need"?`${r.date}｜${r.period}｜${r.className}｜${r.subject}｜${r.original}`:`${r.date}｜${r.period}｜${r.teacher}｜${r.subject}`).map(escapeHtml).join("<br>");return`<strong>資料預覽</strong><br>${sample}${rows.length>2?`<br>另有 ${rows.length-2} 筆…`:""}`;}
+function refreshExtractedData(){if(!state.workbook||!state.mappings.need||!state.mappings.availability)return;state.needs=extract("need");state.availability=extract("availability");$("needsCount").textContent=`${state.needs.length} 堂遺留課務`;$("availabilityCount").textContent=`${state.availability.length} 格可入班空堂`;$("needsPreview").innerHTML=previewRows(state.needs,"need");$("availabilityPreview").innerHTML=previewRows(state.availability,"availability");$("runMatch").disabled=!(state.needs.length&&state.availability.length);}
+
+function chineseNumber(value){const map={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8,"九":9,"十":10};return Number(value)||map[value]||0;}
+function parseInstructions(text){
+  const rules={exclude:new Set(),max:new Map(),globalMax:null,priority:new Set(),specific:[],labels:[]};
+  let match;
+  const excludePattern=/(?:排除|不要安排)([^；;\n]+)/g;
+  while((match=excludePattern.exec(text))){const names=match[1].match(/[\u4e00-\u9fa5]{1,6}老師/g)||[];names.forEach(name=>rules.exclude.add(name));if(names.length)rules.labels.push(`排除：${names.join("、")}`);}
+  const globalPattern=/每(?:位|人)?(?:教師)?最多\s*([一二三四五六七八九十\d]+)\s*堂/g;
+  while((match=globalPattern.exec(text))){rules.globalMax=chineseNumber(match[1]);rules.labels.push(`每位教師最多 ${rules.globalMax} 堂`);}
+  const maxPattern=/([\u4e00-\u9fa5]{1,6}老師)\s*最多\s*([一二三四五六七八九十\d]+)\s*堂/g;
+  while((match=maxPattern.exec(text))){const n=chineseNumber(match[2]);rules.max.set(match[1],n);rules.labels.push(`${match[1]}最多 ${n} 堂`);}
+  const priorityPattern=/優先(?:安排)?\s*([\u4e00-\u9fa5]{1,6}老師)/g;
+  while((match=priorityPattern.exec(text))){rules.priority.add(match[1]);rules.labels.push(`優先：${match[1]}`);}
+  const specificPattern=/(\d{3})\s*(第?\d+\s*節?)\s*(?:指定|給|由|安排給)\s*([\u4e00-\u9fa5]{1,6}老師)/g;
+  while((match=specificPattern.exec(text))){const item={className:match[1],period:periodText(match[2].replace(/\s/g,"")),teacher:match[3]};rules.specific.push(item);rules.labels.push(`${item.className}${item.period}指定${item.teacher}`);}
+  rules.labels=[...new Set(rules.labels)];rules.valid=rules.labels.length>0;return rules;
+}
+const getExcluded=()=>new Set($("excludedTeachers").value.split(/[,，、;；]/).map(v=>v.trim()).filter(Boolean));
+const getAllExcluded=()=>new Set([...getExcluded(),...(state.instructions?.exclude||[])]);
+const instructionLimit=teacher=>state.instructions?.max.get(teacher)??state.instructions?.globalMax??Infinity;
+const countByTeacher=rows=>rows.reduce((m,r)=>m.set(r.teacher,(m.get(r.teacher)||0)+1),new Map());
+const uniqueAvailability=(rows=state.availability)=>[...new Map(rows.map(r=>[`${slotKey(r)}|${r.teacher}`,r])).values()];
+function arrange(){
+  const excluded=getAllExcluded(), allUnique=uniqueAvailability(), instructions=state.instructions;
+  const usable=allUnique.filter(r=>!excluded.has(r.teacher));
+  const totals=countByTeacher(usable), loads=new Map([...totals.keys()].map(t=>[t,0])), used=new Set(), assigned=new Map();
+  [...state.needs].sort((a,b)=>usable.filter(x=>slotKey(x)===slotKey(a)).length-usable.filter(x=>slotKey(x)===slotKey(b)).length).forEach((need,sequence)=>{
+    const allInSlot=allUnique.filter(r=>slotKey(r)===slotKey(need));
+    const inSlot=usable.filter(r=>slotKey(r)===slotKey(need)&&!used.has(`${slotKey(r)}|${r.teacher}`)&&(loads.get(r.teacher)||0)<instructionLimit(r.teacher));
+    const specific=instructions?.specific.find(item=>item.className===need.className&&item.period===need.period);
+    const sameSubject=inSlot.filter(r=>subjectKey(r.subject)===subjectKey(need.subject));
+    let candidates;
+    if(isPhysicalEducation(need.subject)) candidates=inSlot.filter(r=>isPhysicalEducation(r.subject));
+    else if(specific)candidates=inSlot;
+    else candidates=sameSubject.length?sameSubject:inSlot;
+    if(specific)candidates=candidates.filter(r=>r.teacher===specific.teacher);
+    const loadsBefore=new Map(loads);
+    candidates.sort((a,b)=>{
+      const nextA=((loads.get(a.teacher)||0)+1)/(totals.get(a.teacher)||1);
+      const nextB=((loads.get(b.teacher)||0)+1)/(totals.get(b.teacher)||1);
+      const priorityA=instructions?.priority.has(a.teacher)?1:0,priorityB=instructions?.priority.has(b.teacher)?1:0;
+      return priorityB-priorityA||nextA-nextB||totals.get(b.teacher)-totals.get(a.teacher)||a.teacher.localeCompare(b.teacher,"zh-Hant");
+    });
+    const p=candidates[0];
+    const traceCandidates=allInSlot.map(row=>{
+      const teacherTotal=allUnique.filter(x=>x.teacher===row.teacher).length;
+      const before=loadsBefore.get(row.teacher)||0;
+      let status="列入比例比較";
+      if(excluded.has(row.teacher))status="排除名單";
+      else if(used.has(`${slotKey(row)}|${row.teacher}`))status="同節次已安排";
+      else if((loadsBefore.get(row.teacher)||0)>=instructionLimit(row.teacher))status="已達指令上限";
+      else if(isPhysicalEducation(need.subject)&&!isPhysicalEducation(row.subject))status="非體育教師";
+      else if(specific&&row.teacher!==specific.teacher)status="指令指定其他教師";
+      else if(!isPhysicalEducation(need.subject)&&sameSubject.length&&subjectKey(row.subject)!==subjectKey(need.subject))status="非同科，本輪不採用";
+      return {teacher:row.teacher,subject:row.subject,total:teacherTotal,before,nextRatio:teacherTotal?(before+1)/teacherTotal:0,status};
+    });
+    if(p){
+      loads.set(p.teacher,(loads.get(p.teacher)||0)+1);used.add(`${slotKey(p)}|${p.teacher}`);
+      const reason=specific?"指令指定":instructions?.priority.has(p.teacher)?"指令優先":isPhysicalEducation(need.subject)?"體育課・體育教師":subjectKey(p.subject)===subjectKey(need.subject)?"同科優先・比例公平":"比例公平";
+      traceCandidates.forEach(c=>{if(c.teacher===p.teacher)c.status="獲選";});
+      assigned.set(need.id,{...need,teacher:p.teacher,teacherSubject:p.subject,reason,trace:{sequence:sequence+1,slotCount:allInSlot.length,eligibleCount:candidates.length,candidates:traceCandidates}});
+    }else{
+      const reason=specific?"指定教師於該節不可用":isPhysicalEducation(need.subject)?"無可用體育教師":"該節無可用教師";
+      assigned.set(need.id,{...need,teacher:"",teacherSubject:"",reason,trace:{sequence:sequence+1,slotCount:allInSlot.length,eligibleCount:0,candidates:traceCandidates}});
+    }
+  });state.assignments=state.needs.map(n=>assigned.get(n.id));state.openDetails.clear();
+}
+function eligibleTeachers(a){const busy=new Set(state.assignments.filter(x=>x.id!==a.id&&slotKey(x)===slotKey(a)&&x.teacher).map(x=>x.teacher)),excluded=getAllExcluded(),loads=state.assignments.filter(x=>x.id!==a.id&&x.teacher).reduce((m,x)=>m.set(x.teacher,(m.get(x.teacher)||0)+1),new Map());let rows=state.availability.filter(x=>slotKey(x)===slotKey(a)&&!busy.has(x.teacher)&&!excluded.has(x.teacher)&&(loads.get(x.teacher)||0)<instructionLimit(x.teacher));if(isPhysicalEducation(a.subject))rows=rows.filter(x=>isPhysicalEducation(x.subject));return[...new Map(rows.map(x=>[x.teacher,x])).values()];}
+function renderLoads(){const rows=state.availability.filter(a=>!getAllExcluded().has(a.teacher)),usable=uniqueAvailability(rows),totals=countByTeacher(usable),loads=state.assignments.filter(a=>a.teacher).reduce((m,a)=>m.set(a.teacher,(m.get(a.teacher)||0)+1),new Map());$("teacherLoads").innerHTML=[...totals.keys()].sort((a,b)=>(loads.get(b)||0)/totals.get(b)-(loads.get(a)||0)/totals.get(a)).map(t=>{const u=loads.get(t)||0,n=totals.get(t),pct=Math.min(100,Math.round(u/n*100)),limit=instructionLimit(t);return`<div class="load-item"><div class="load-line"><span>${escapeHtml(t)}</span><strong>${u}／${n}${Number.isFinite(limit)?`・上限 ${limit}`:""}</strong></div><div class="bar"><i style="width:${pct}%"></i></div></div>`}).join("")||"目前沒有可用教師。";}
+const percent=n=>`${Math.round((n||0)*100)}%`;
+function renderDetail(a){
+  const trace=a.trace||{sequence:"—",slotCount:0,eligibleCount:0,candidates:[]};
+  const decision=a.manual?`已人工改派為「${a.teacher||"未安排"}」；下表保留自動配對當時的比較紀錄。`:a.teacher?`系統選擇「${a.teacher}」，原因為${a.reason}。`:`本堂未完成配對：${a.reason}。`;
+  const candidates=[...trace.candidates];
+  if(a.teacher&&!candidates.some(c=>c.teacher===a.teacher))candidates.unshift({teacher:a.teacher,subject:a.teacherSubject,total:"—",before:"—",nextRatio:0,status:a.manual?"人工選定":"獲選"});
+  const rows=candidates.length?candidates.map(c=>{
+    const chosen=c.teacher===a.teacher;
+    let status=chosen?(a.manual?"人工選定":"獲選"):c.status;
+    if(a.manual&&!chosen&&c.status==="獲選")status="原自動選定";
+    return`<tr class="${chosen?"selected":""}"><td><strong>${escapeHtml(c.teacher)}</strong></td><td>${escapeHtml(c.subject)}</td><td>${escapeHtml(c.total)}</td><td>${escapeHtml(c.before)}</td><td class="ratio">${typeof c.nextRatio==="number"?percent(c.nextRatio):"—"}</td><td><span class="candidate-status ${chosen?"chosen":""}">${escapeHtml(status)}</span></td></tr>`;
+  }).join(""):`<tr><td colspan="6">此日期、節次沒有可入班教師。</td></tr>`;
+  return`<div class="match-detail"><div class="decision-line"><span>第 ${trace.sequence} 筆處理</span><i>›</i><span>同節次 ${trace.slotCount} 人</span><i>›</i><span>符合規則 ${trace.eligibleCount} 人</span><i>›</i><span>${a.teacher?`安排 ${escapeHtml(a.teacher)}`:"未配對"}</span></div><p class="decision-note"><strong>${escapeHtml(a.className)} ${escapeHtml(a.subject)}</strong>｜原授課教師：${escapeHtml(a.original)}。${escapeHtml(decision)}</p><div class="table-wrap"><table class="candidate-table"><thead><tr><th>候選教師</th><th>科別</th><th>無課務堂數</th><th>配對前已安排</th><th>若安排後比例</th><th>處理結果</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function renderResults(){
+  const matched=state.assignments.filter(a=>a.teacher),unmatched=state.assignments.length-matched.length;$("results-title").textContent=unmatched?`已安排 ${matched.length} 堂，仍有 ${unmatched} 堂待處理`:`全部 ${matched.length} 堂已完成安排`;$("statNeeds").textContent=state.assignments.length;$("statMatched").textContent=matched.length;$("statUnmatched").textContent=unmatched;$("statTeachers").textContent=new Set(matched.map(a=>a.teacher)).size;$("stats").hidden=false;$("emptyResult").hidden=true;$("resultGrid").hidden=false;$("matchSummary").textContent=unmatched?`${unmatched} 堂需人工確認`:"無未配對課務";
+  $("resultsBody").innerHTML=state.assignments.map((a,i)=>{
+    const options=eligibleTeachers(a);if(a.teacher&&!options.some(x=>x.teacher===a.teacher))options.unshift({teacher:a.teacher,subject:a.teacherSubject});
+    const open=state.openDetails.has(i);
+    return`<tr class="${a.teacher?"":"unmatched"}"><td><strong>${escapeHtml(a.date)}</strong><br><span class="cell-sub">${escapeHtml(a.period)}</span></td><td><strong>${escapeHtml(a.className)}</strong></td><td>${escapeHtml(a.subject)}</td><td>${escapeHtml(a.original)}</td><td><select class="teacher-select" data-index="${i}" aria-label="${escapeHtml(a.className)}入班教師"><option value="">未安排</option>${options.map(x=>`<option value="${escapeHtml(x.teacher)}" ${x.teacher===a.teacher?"selected":""}>${escapeHtml(x.teacher)}（${escapeHtml(x.subject)}）</option>`).join("")}</select></td><td><span class="badge ${a.teacher?"":"warning"}">${escapeHtml(a.reason)}</span></td><td><button class="detail-toggle" data-index="${i}" aria-expanded="${open}">${open?"收起":"查看紀錄"}</button></td></tr><tr class="detail-row" data-detail="${i}" ${open?"":"hidden"}><td colspan="7">${renderDetail(a)}</td></tr>`;
+  }).join("");
+  document.querySelectorAll(".teacher-select").forEach(s=>s.addEventListener("change",e=>{const i=+e.target.dataset.index,row=state.assignments[i],teacher=e.target.value,source=state.availability.find(a=>a.teacher===teacher&&slotKey(a)===slotKey(row));row.teacher=teacher;row.teacherSubject=source?.subject||"";row.reason=teacher?(subjectKey(source?.subject)===subjectKey(row.subject)?"人工指定・同科":"人工指定"):"尚未安排";row.manual=true;state.openDetails.add(i);renderResults();}));
+  document.querySelectorAll(".detail-toggle").forEach(button=>button.addEventListener("click",()=>{const i=+button.dataset.index,row=document.querySelector(`[data-detail="${i}"]`),open=button.getAttribute("aria-expanded")==="true";button.setAttribute("aria-expanded",String(!open));button.textContent=open?"查看紀錄":"收起";row.hidden=open;if(open)state.openDetails.delete(i);else state.openDetails.add(i);}));
+  renderLoads();["copyResults","exportCsv","printResults"].forEach(id=>$(id).disabled=false);
+}
+function showToast(m){$("toast").textContent=m;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),1800);}
+function setWorkflowStep(step){document.querySelectorAll(".workflow-strip span").forEach((item,index)=>{item.classList.toggle("active",index===step-1);item.classList.toggle("done",index<step-1);});}
+function renderInstructionChips(rules){const box=$("commandChips");if(!$("quickCommand").value.trim()){box.innerHTML='<span class="empty-command">尚未加入指令</span>';return;}if(!rules.valid){box.innerHTML='<span class="invalid-command">尚未辨識；請依下方範例輸入</span>';return;}box.innerHTML=rules.labels.map(label=>`<span>${escapeHtml(label)}</span>`).join("");}
+function applyInstructions(notify=true){state.instructions=parseInstructions($("quickCommand").value);renderInstructionChips(state.instructions);if(state.needs.length&&state.availability.length){arrange();renderResults();setWorkflowStep(3);}if(notify)showToast(state.instructions.valid?"指令已套用並重新配對":"未辨識指令，已維持固定規則");}
+function showError(m){$("fileMeta").hidden=false;$("fileMeta").textContent=m;$("fileMeta").style.background="#fff1ef";$("fileMeta").style.color="#8f332c";}
+function resultRows(){return[["日期","節次","班級","科目","原授課教師","入班教師","配對依據"],...state.assignments.map(a=>[a.date,a.period,a.className,a.subject,a.original,a.teacher||"未安排",a.reason])];}
+async function handleFile(file){if(!file)return;if(!file.name.toLowerCase().endsWith(".xlsx")){showError("目前請上傳 .xlsx；舊版 .xls 請先另存為 .xlsx。");return;}$("fileMeta").hidden=false;$("fileMeta").textContent=`正在讀取 ${file.name}…`;try{state.workbook=await readWorkbook(file);fillSheetSelect("needsSheet",pickSheet("need"));fillSheetSelect("availabilitySheet",pickSheet("availability"));$("fileMeta").removeAttribute("style");$("fileMeta").textContent=`已讀取 ${file.name}｜${state.workbook.sheets.length} 個工作表：${state.workbook.sheets.map(s=>s.name).join("、")}`;$("mappingWorkspace").hidden=false;configureMapping("need");configureMapping("availability");setWorkflowStep(2);showToast("Excel 讀取完成，請確認欄位對應");}catch(e){showError(e.message);}}
+
+$("excelFile").addEventListener("change",e=>handleFile(e.target.files[0]));$("dropZone").addEventListener("dragover",e=>{e.preventDefault();$("dropZone").classList.add("dragging")});$("dropZone").addEventListener("dragleave",()=>$("dropZone").classList.remove("dragging"));$("dropZone").addEventListener("drop",e=>{e.preventDefault();$("dropZone").classList.remove("dragging");handleFile(e.dataTransfer.files[0]);});
+$("needsSheet").addEventListener("change",()=>configureMapping("need"));$("availabilitySheet").addEventListener("change",()=>configureMapping("availability"));["needDate","needPeriod","needClass","needSubject","needTeacher","availableDate","availablePeriod","availableTeacher","availableSubject"].forEach(id=>$(id).addEventListener("change",refreshExtractedData));
+$("runMatch").addEventListener("click",()=>{refreshExtractedData();arrange();renderResults();setWorkflowStep(3);showToast("配對完成，可逐筆查看紀錄");$("resultsSection").scrollIntoView({behavior:"smooth"});});
+$("applyCommand").addEventListener("click",()=>applyInstructions());
+$("quickCommand").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();applyInstructions();}});
+let commandTimer;$("quickCommand").addEventListener("input",()=>{clearTimeout(commandTimer);const rules=parseInstructions($("quickCommand").value);renderInstructionChips(rules);commandTimer=setTimeout(()=>applyInstructions(false),500);});
+$("copyResults").addEventListener("click",async()=>{await navigator.clipboard.writeText(resultRows().map(r=>r.join("\t")).join("\n"));showToast("已複製，可直接貼到 Excel");});
+$("exportCsv").addEventListener("click",()=>{const csv="\ufeff"+resultRows().map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=`${$("eventName").value||"校外活動"}-入班安排.csv`;a.click();URL.revokeObjectURL(a.href);});$("printResults").addEventListener("click",()=>print());
+if(document.modelContext?.registerTool)document.modelContext.registerTool({name:"arrange_classroom_coverage",title:"自動安排入班",description:"依目前上傳 Excel 的資料與頁面規則執行公平配對。",inputSchema:{type:"object",properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute(){if($("runMatch").disabled)throw new Error("請先上傳並完成 Excel 欄位辨識");$("runMatch").click();return{matched:state.assignments.filter(a=>a.teacher).length,unmatched:state.assignments.filter(a=>!a.teacher).length};}});
+
+</script>
+</body>
+</html>
